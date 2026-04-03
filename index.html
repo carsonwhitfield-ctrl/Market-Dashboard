@@ -512,6 +512,18 @@
       <span class="dca-label">Return</span>
       <span class="dca-value green" id="sim-return">--</span>
     </div>
+    <div class="dca-row" style="margin-top: 16px;">
+  <span class="dca-label">DCA Start Date</span>
+  <input type="date" id="dca-start-date" style="background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 0.78rem; outline: none;"/>
+</div>
+<div class="dca-row">
+  <span class="dca-label">Weeks Since Start</span>
+  <span class="dca-value" id="weeks-since">--</span>
+</div>
+<div class="dca-row">
+  <span class="dca-label">Total Invested Since</span>
+  <span class="dca-value green" id="total-since">--</span>
+</div>
     <p style="font-size:0.6rem;color:var(--text-dim);margin-top:12px;">* Simplified estimate using avg BTC price over period. Not financial advice.</p>
   </div>
 </div>
@@ -725,6 +737,14 @@ function calcDCA() {
     document.getElementById('sim-return').style.color = ret >= 0 ? 'var(--green)' : 'var(--red)';
   }
 }
+  document.getElementById('dca-start-date').addEventListener('change', function() {
+  const start = new Date(this.value);
+  const today = new Date();
+  const weeks = Math.floor((today - start) / (1000 * 60 * 60 * 24 * 7));
+  const weekly = parseFloat(document.getElementById('dca-amount').value) || 0;
+  document.getElementById('weeks-since').textContent = weeks + ' weeks';
+  document.getElementById('total-since').textContent = fmt(weekly * weeks, 0);
+});
 
 // ─── INIT & REFRESH ──────────────────────────────────────────────────
 async function refreshAll() {

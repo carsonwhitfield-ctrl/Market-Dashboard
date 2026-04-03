@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Carson's Market Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --border: #1e2d3d;
+    --accent: #00e5ff;
+    --accent2: #f7931a;
+    --green: #00ff88;
+    --red: #ff3b5c;
+    --muted: #4a5568;
+    --text: #cdd9e5;
+    --text-dim: #637080;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    padding: 24px;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(0,229,255,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(247,147,26,0.04) 0%, transparent 50%);
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.6rem;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .header-left h1 span { color: var(--accent); }
+
+  .header-left p {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    text-align: right;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+
+  #clock {
+    font-size: 1.1rem;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  #last-updated { font-size: 0.65rem; }
+
+  /* GRID */
+  .price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--accent); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .card.btc::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .card.eth::before { background: linear-gradient(90deg, #627eea, transparent); }
+  .card.sol::before { background: linear-gradient(90deg, #9945ff, transparent); }
+  .card.voo::before { background: linear-gradient(90deg, var(--green), transparent); }
+  .card.nvda::before { background: linear-gradient(90deg, #76b900, transparent); }
+
+  .card-label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .card-symbol {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+
+  .card-price {
+    font-size: 1.55rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .card-change {
+    font-size: 0.8rem;
+    margin-top: 6px;
+    font-weight: bold;
+  }
+
+  .card-change.up { color: var(--green); }
+  .card-change.down { color: var(--red); }
+
+  .card-mcap {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  .loading-pulse {
+    display: inline-block;
+    width: 80px; height: 14px;
+    background: var(--border);
+    border-radius: 3px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* CHART SECTION */
+  .chart-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  @media (max-width: 768px) {
+    .chart-section { grid-template-columns: 1fr; }
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .chart-card h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .chart-subtitle {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .chart-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .tab-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tab-btn.active, .tab-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  canvas { max-height: 220px; }
+
+  /* DCA SECTION */
+  .dca-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .dca-card h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .dca-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+  }
+
+  .dca-row:last-child { border-bottom: none; }
+
+  .dca-label { color: var(--text-dim); }
+  .dca-value { color: #fff; font-weight: bold; }
+  .dca-value.green { color: var(--green); }
+  .dca-value.orange { color: var(--accent2); }
+
+  .dca-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .dca-input-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    outline: none;
+  }
+
+  .dca-input-row input:focus { border-color: var(--accent); }
+
+  .dca-input-row button {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .dca-input-row button:hover { opacity: 0.85; }
+
+  /* ABOUT */
+  .about-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+
+  @media (max-width: 600px) { .about-card { flex-direction: column; } }
+
+  .about-card p {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    max-width: 600px;
+  }
+
+  .about-card p strong { color: var(--accent); }
+
+  .about-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 130px;
+  }
+
+  .about-links a {
+    font-size: 0.72rem;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 4px;
+    text-align: center;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+
+  .about-links a:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* FEAR GREED */
+  .fg-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 800;
+    line-height: 1;
+    margin: 12px 0 4px;
+  }
+
+  .fg-label {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .fg-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+
+  .fg-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>MARKET<span>DESK</span></h1>
+    <p>Live Crypto &amp; Equity Dashboard &mdash; Built by Carson</p>
+  </div>
+  <div class="header-right">
+    <span id="clock">--:--:--</span>
+    <span>New York, EST</span><br/>
+    <span id="last-updated">Fetching data...</span>
+  </div>
+</header>
+
+<div class="status-bar">
+  <div class="status-dot"></div>
+  <span>LIVE &mdash; CoinGecko API &mdash; Refreshes every 60s</span>
+</div>
+
+<!-- PRICE CARDS -->
+<p class="section-title">Tracked Assets</p>
+<div class="price-grid" id="price-grid">
+  <div class="card btc"><div class="card-label">Cryptocurrency</div><div class="card-symbol">BTC &mdash; Bitcoin</div><div class="card-price"><span class="loading-pulse"></span></div><div class="card-change">Loading...</div><div class="card-mcap"></div></div>
+  <div class="card eth"><div class="card-label">Cryptocurrency</div><div class="card-symbol">ETH &mdash; Ethereum</div><div class="card-price"><span class="loading-pulse"></span></div><div class="card-change">Loading...</div><div class="card-mcap"></div></div>
+  <div class="card sol"><div class="card-label">Cryptocurrency</div><div class="card-symbol">SOL &mdash; Solana</div><div class="card-price"><span class="loading-pulse"></span></div><div class="card-change">Loading...</div><div class="card-mcap"></div></div>
+  <div class="card voo"><div class="card-label">ETF</div><div class="card-symbol">VOO &mdash; S&P 500</div><div class="card-price"><span class="loading-pulse"></span></div><div class="card-change">Loading...</div><div class="card-mcap"></div></div>
+  <div class="card nvda"><div class="card-label">Equity</div><div class="card-symbol">NVDA &mdash; Nvidia</div><div class="card-price"><span class="loading-pulse"></span></div><div class="card-change">Loading...</div><div class="card-mcap"></div></div>
+</div>
+
+<!-- CHART + DCA -->
+<div class="chart-section">
+  <div class="chart-card">
+    <h2>Bitcoin Price History</h2>
+    <div class="chart-subtitle">USD &mdash; Historical Close</div>
+    <div class="chart-tabs">
+      <button class="tab-btn active" onclick="loadChart(7, this)">7D</button>
+      <button class="tab-btn" onclick="loadChart(30, this)">30D</button>
+      <button class="tab-btn" onclick="loadChart(90, this)">90D</button>
+      <button class="tab-btn" onclick="loadChart(365, this)">1Y</button>
+    </div>
+    <canvas id="btcChart"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h2>Fear &amp; Greed Index</h2>
+    <div class="chart-subtitle">Crypto Sentiment</div>
+    <div id="fg-number" class="fg-number" style="color: var(--accent)">--</div>
+    <div id="fg-label" class="fg-label" style="color: var(--text-dim)">Loading...</div>
+    <div class="fg-bar"><div class="fg-fill" id="fg-fill" style="width:0%;background:var(--accent)"></div></div>
+    <br/>
+    <div class="dca-row">
+      <span class="dca-label">Yesterday</span>
+      <span class="dca-value" id="fg-yesterday">--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Last Week</span>
+      <span class="dca-value" id="fg-lastweek">--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Last Month</span>
+      <span class="dca-value" id="fg-lastmonth">--</span>
+    </div>
+  </div>
+</div>
+
+<!-- DCA CALCULATOR -->
+<div class="chart-section" style="margin-bottom:14px;">
+  <div class="dca-card">
+    <h2>My DCA Strategy</h2>
+    <div class="chart-subtitle">Dollar-Cost Averaging &mdash; Bitcoin</div>
+    <div class="dca-row">
+      <span class="dca-label">Strategy</span>
+      <span class="dca-value orange">Weekly BTC purchases regardless of price</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Weekly Amount</span>
+      <span class="dca-value" id="dca-weekly">$--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Est. Annual Contribution</span>
+      <span class="dca-value" id="dca-annual">$--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">BTC Accumulated / Week</span>
+      <span class="dca-value green" id="dca-btc-per-week">--</span>
+    </div>
+    <div class="dca-input-row">
+      <input type="number" id="dca-amount" placeholder="Enter weekly $ amount" min="1"/>
+      <button onclick="calcDCA()">CALC</button>
+    </div>
+  </div>
+
+  <div class="dca-card">
+    <h2>DCA Simulator</h2>
+    <div class="chart-subtitle">If you started DCA 1 year ago</div>
+    <div class="dca-row">
+      <span class="dca-label">Total Invested</span>
+      <span class="dca-value" id="sim-invested">--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Est. BTC Accumulated</span>
+      <span class="dca-value orange" id="sim-btc">--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Current Value</span>
+      <span class="dca-value green" id="sim-value">--</span>
+    </div>
+    <div class="dca-row">
+      <span class="dca-label">Return</span>
+      <span class="dca-value green" id="sim-return">--</span>
+    </div>
+    <p style="font-size:0.6rem;color:var(--text-dim);margin-top:12px;">* Simplified estimate using avg BTC price over period. Not financial advice.</p>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div class="about-card">
+  <p>
+    Built by <strong>Carson</strong> &mdash; Economics graduate, Business Analyst at PNC Financial, and fintech enthusiast.
+    This dashboard tracks the assets I personally invest in using a <strong>dollar-cost averaging</strong> strategy.
+    I built this to combine my interest in financial markets with hands-on development experience.
+    Targeting roles in <strong>fintech, insurtech, and crypto operations</strong>.
+  </p>
+  <div class="about-links">
+    <a href="https://linkedin.com/in/yourprofile" target="_blank">LinkedIn ↗</a>
+    <a href="resume.pdf" target="_blank">Resume ↗</a>
+    <a href="mailto:you@email.com">Contact ↗</a>
+  </div>
+</div>
+
+<script>
+// ─── CLOCK ───────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── FORMAT HELPERS ──────────────────────────────────────────────────
+const fmt = (n, d=2) => n == null ? 'N/A' : '$' + n.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+const fmtPct = n => n == null ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+const fmtBig = n => {
+  if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  return '$' + n.toLocaleString();
+};
+
+// ─── PRICE CARDS ────────────────────────────────────────────────────
+const ASSETS = [
+  { id: 'bitcoin',  symbol: 'BTC', name: 'Bitcoin',   cls: 'btc', type: 'Cryptocurrency', decimals: 0 },
+  { id: 'ethereum', symbol: 'ETH', name: 'Ethereum',  cls: 'eth', type: 'Cryptocurrency', decimals: 2 },
+  { id: 'solana',   symbol: 'SOL', name: 'Solana',    cls: 'sol', type: 'Cryptocurrency', decimals: 2 },
+];
+
+// Yahoo Finance via allorigins proxy for VOO/NVDA
+const STOCKS = [
+  { symbol: 'VOO',  name: 'S&P 500', cls: 'voo', type: 'ETF' },
+  { symbol: 'NVDA', name: 'Nvidia',  cls: 'nvda', type: 'Equity' },
+];
+
+let btcPrice = null;
+
+function renderCard(cls, price, change, mcap, decimals=2) {
+  const card = document.querySelector(`.card.${cls}`);
+  if (!card) return;
+  card.querySelector('.card-price').innerHTML = fmt(price, price > 100 ? 0 : decimals);
+  const chEl = card.querySelector('.card-change');
+  chEl.textContent = fmtPct(change);
+  chEl.className = 'card-change ' + (change >= 0 ? 'up' : 'down');
+  if (mcap) card.querySelector('.card-mcap').textContent = 'Mkt Cap: ' + fmtBig(mcap);
+}
+
+async function fetchCrypto() {
+  const ids = ASSETS.map(a => a.id).join(',');
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`;
+  const res = await fetch(url);
+  const data = await res.json();
+  ASSETS.forEach(a => {
+    const d = data[a.id];
+    if (!d) return;
+    if (a.id === 'bitcoin') btcPrice = d.usd;
+    renderCard(a.cls, d.usd, d.usd_24h_change, d.usd_market_cap, a.decimals);
+  });
+}
+
+async function fetchStocks() {
+  for (const s of STOCKS) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${s.symbol}?interval=1d&range=2d`;
+      const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxy);
+      const data = await res.json();
+      const meta = data.chart.result[0].meta;
+      const price = meta.regularMarketPrice;
+      const prev = meta.chartPreviousClose;
+      const change = ((price - prev) / prev) * 100;
+      renderCard(s.cls, price, change, null, 2);
+    } catch(e) {
+      const card = document.querySelector(`.card.${s.cls}`);
+      if (card) {
+        card.querySelector('.card-price').innerHTML = 'N/A';
+        card.querySelector('.card-change').textContent = 'Data unavailable';
+        card.querySelector('.card-change').className = 'card-change';
+      }
+    }
+  }
+}
+
+// ─── BTC CHART ──────────────────────────────────────────────────────
+let chart = null;
+
+async function loadChart(days, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const prices = data.prices;
+  const labels = prices.map(p => {
+    const d = new Date(p[0]);
+    return days <= 7
+      ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+  const values = prices.map(p => p[1]);
+
+  const step = Math.max(1, Math.floor(labels.length / 10));
+  const sparseLabels = labels.map((l, i) => i % step === 0 ? l : '');
+
+  const ctx = document.getElementById('btcChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+  gradient.addColorStop(0, 'rgba(0,229,255,0.25)');
+  gradient.addColorStop(1, 'rgba(0,229,255,0.01)');
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sparseLabels,
+      datasets: [{
+        data: values,
+        borderColor: '#00e5ff',
+        borderWidth: 1.5,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => fmt(ctx.parsed.y, 0) }
+      }},
+      scales: {
+        x: { ticks: { color: '#4a5568', font: { family: 'Share Tech Mono', size: 10 } }, grid: { color: '#1e2d3d' } },
+        y: { ticks: { color: '#4a5568', font: { family: 'Share Tech Mono', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: '#1e2d3d' } }
+      }
+    }
+  });
+}
+
+// ─── FEAR & GREED ───────────────────────────────────────────────────
+async function fetchFearGreed() {
+  const url = 'https://api.alternative.me/fng/?limit=30';
+  const res = await fetch(url);
+  const data = await res.json();
+  const latest = data.data[0];
+  const val = parseInt(latest.value);
+  const label = latest.value_classification;
+
+  const colorMap = {
+    'Extreme Fear': '#ff3b5c',
+    'Fear': '#ff8c42',
+    'Neutral': '#f7931a',
+    'Greed': '#a8e063',
+    'Extreme Greed': '#00ff88',
+  };
+  const color = colorMap[label] || '#00e5ff';
+
+  document.getElementById('fg-number').textContent = val;
+  document.getElementById('fg-number').style.color = color;
+  document.getElementById('fg-label').textContent = label;
+  document.getElementById('fg-label').style.color = color;
+  document.getElementById('fg-fill').style.width = val + '%';
+  document.getElementById('fg-fill').style.background = color;
+
+  const getVal = i => data.data[i] ? data.data[i].value : '--';
+  document.getElementById('fg-yesterday').textContent = getVal(1);
+  document.getElementById('fg-lastweek').textContent = getVal(7);
+  document.getElementById('fg-lastmonth').textContent = getVal(29);
+}
+
+// ─── DCA CALCULATOR ─────────────────────────────────────────────────
+function calcDCA() {
+  const weekly = parseFloat(document.getElementById('dca-amount').value);
+  if (!weekly || weekly <= 0) return;
+
+  document.getElementById('dca-weekly').textContent = fmt(weekly, 0);
+  document.getElementById('dca-annual').textContent = fmt(weekly * 52, 0);
+
+  if (btcPrice) {
+    const btcPerWeek = weekly / btcPrice;
+    document.getElementById('dca-btc-per-week').textContent = btcPerWeek.toFixed(6) + ' BTC';
+
+    // Simulator: 52 weeks of DCA at ~avg price (rough est using 80% of current)
+    const avgPrice = btcPrice * 0.82;
+    const totalInvested = weekly * 52;
+    const btcAccum = totalInvested / avgPrice;
+    const currentValue = btcAccum * btcPrice;
+    const ret = ((currentValue - totalInvested) / totalInvested) * 100;
+
+    document.getElementById('sim-invested').textContent = fmt(totalInvested, 0);
+    document.getElementById('sim-btc').textContent = btcAccum.toFixed(4) + ' BTC';
+    document.getElementById('sim-value').textContent = fmt(currentValue, 0);
+    document.getElementById('sim-return').textContent = fmtPct(ret);
+    document.getElementById('sim-return').style.color = ret >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+// ─── INIT & REFRESH ──────────────────────────────────────────────────
+async function refreshAll() {
+  try {
+    await fetchCrypto();
+    await fetchStocks();
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
+  } catch(e) {
+    document.getElementById('last-updated').textContent = 'Update failed — retrying...';
+  }
+}
+
+refreshAll();
+loadChart(7, null);
+fetchFearGreed();
+setInterval(refreshAll, 60000);
+</script>
+</body>
+</html>
